@@ -1,0 +1,74 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Resources": {
+    "MyS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "log-bucket-minibuild"
+      }
+    },
+    "MyLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "log-lambda.lambda_handler",
+        "Role": "arn:aws:iam::[your-account-id]:role/[your-lambda-role]",
+        "Code": {
+          "S3Bucket": "[your-lambda-code-bucket]",
+          "S3Key": "log-lambda.zip"
+        },
+        "Runtime": "python3.8",
+        "Timeout": 30
+      }
+    },
+    "MyLambdaInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "MyLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Principal": "s3.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "MyS3Bucket",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "MyBucketNotification": {
+      "Type": "AWS::S3::BucketNotification",
+      "Properties": {
+        "Bucket": {
+          "Ref": "MyS3Bucket"
+        },
+        "NotificationConfiguration": {
+          "LambdaConfigurations": [
+            {
+              "Event": "s3:ObjectCreated:*",
+              "Function": {
+                "Fn::GetAtt": [
+                  "MyLambdaFunction",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Event": "s3:ObjectRemoved:*",
+              "Function": {
+                "Fn::GetAtt": [
+                  "MyLambdaFunction",
+                  "Arn"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
