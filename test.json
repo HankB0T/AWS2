@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Resources": {
-    "MyLambdaExecutionRole": {
+    "LambdaExecutionRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "AssumeRolePolicyDocument": {
@@ -18,32 +18,39 @@
         },
         "Policies": [
           {
-            "PolicyName": "root",
+            "PolicyName": "LambdaS3CloudWatchPolicy",
             "PolicyDocument": {
               "Version": "2012-10-17",
               "Statement": [
                 {
                   "Effect": "Allow",
                   "Action": [
-                    "logs:*",
                     "s3:GetObject"
                   ],
-                  "Resource": "*"
+                  "Resource": "arn:aws:s3:::log-minibuild/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
                 }
               ]
             }
           }
-        ],
-        "RoleName": "log-checker"
+        ]
       }
     },
     "MyLambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
-        "Handler": "log-lambda.lambda_handler",
+        "Handler": "log-lambda.handler",
         "Role": {
           "Fn::GetAtt": [
-            "MyLambdaExecutionRole",
+            "LambdaExecutionRole",
             "Arn"
           ]
         },
@@ -55,53 +62,29 @@
         "Timeout": 30
       }
     },
-    "MyLambdaInvokePermission": {
+    "LambdaInvokePermission": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
+          "Ref": "MyLambdaFunction"
+        },
+        "Principal": "s3.amazonaws.com",
+        "SourceArn": "arn:aws:s3:::log-minibuild"
+      }
+    },
+    "S3BucketEvent": {
+      "Type": "Custom::S3BucketEvent",
+      "Properties": {
+        "BucketName": "log-minibuild",
+        "LambdaFunctionArn": {
           "Fn::GetAtt": [
             "MyLambdaFunction",
             "Arn"
           ]
         },
-        "Principal": "s3.amazonaws.com",
-        "SourceArn": {
-          "Fn::GetAtt": [
-            "MyS3Bucket",
-            "Arn"
-          ]
-        }
+        "Events": ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"]
       }
-    },
-    "MyS3Bucket": {
-      "Type": "AWS::S3::Bucket",
-      "Properties": {
-        "BucketName": "log-minibuild",
-        "NotificationConfiguration": {
-          "LambdaConfigurations": [
-            {
-              "Event": "s3:ObjectCreated:*",
-              "Function": {
-                "Fn::GetAtt": [
-                  "MyLambdaFunction",
-                  "Arn"
-                ]
-              }
-            },
-            {
-              "Event": "s3:ObjectRemoved:*",
-              "Function": {
-                "Fn::GetAtt": [
-                  "MyLambdaFunction",
-                  "Arn"
-                ]
-              }
-            }
-          ]
-        }
-      },
-      "DependsOn": "MyLambdaInvokePermission"
     }
   }
 }
