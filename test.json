@@ -25,9 +25,13 @@
                 {
                   "Effect": "Allow",
                   "Action": [
-                    "s3:GetObject"
+                    "s3:GetObject",
+                    "s3:ListBucket"
                   ],
-                  "Resource": "arn:aws:s3:::log-minibuild/*"
+                  "Resource": [
+                    "arn:aws:s3:::log-minibuild",
+                    "arn:aws:s3:::log-minibuild/*"
+                  ]
                 },
                 {
                   "Effect": "Allow",
@@ -36,7 +40,7 @@
                     "logs:CreateLogStream",
                     "logs:PutLogEvents"
                   ],
-                  "Resource": "arn:aws:logs:*:*:*"
+                  "Resource": "*"
                 }
               ]
             }
@@ -44,10 +48,10 @@
         ]
       }
     },
-    "MyLambdaFunction": {
+    "S3EventLoggerLambda": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
-        "Handler": "log-lambda.handler",
+        "Handler": "log-code.lambda_handler",
         "Role": {
           "Fn::GetAtt": [
             "LambdaExecutionRole",
@@ -56,7 +60,7 @@
         },
         "Code": {
           "S3Bucket": "log-minibuild",
-          "S3Key": "log-lambda.py.zip"
+          "S3Key": "log-code.zip"
         },
         "Runtime": "python3.8",
         "Timeout": 30
@@ -67,23 +71,38 @@
       "Properties": {
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
-          "Ref": "MyLambdaFunction"
+          "Ref": "S3EventLoggerLambda"
         },
         "Principal": "s3.amazonaws.com",
         "SourceArn": "arn:aws:s3:::log-minibuild"
       }
     },
     "S3BucketEvent": {
-      "Type": "Custom::S3BucketEvent",
+      "Type": "AWS::S3::Bucket",
       "Properties": {
         "BucketName": "log-minibuild",
-        "LambdaFunctionArn": {
-          "Fn::GetAtt": [
-            "MyLambdaFunction",
-            "Arn"
+        "NotificationConfiguration": {
+          "LambdaConfigurations": [
+            {
+              "Event": "s3:ObjectCreated:*",
+              "Function": {
+                "Fn::GetAtt": [
+                  "S3EventLoggerLambda",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Event": "s3:ObjectRemoved:*",
+              "Function": {
+                "Fn::GetAtt": [
+                  "S3EventLoggerLambda",
+                  "Arn"
+                ]
+              }
+            }
           ]
-        },
-        "Events": ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"]
+        }
       }
     }
   }
