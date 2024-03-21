@@ -76,34 +76,6 @@
         "Principal": "s3.amazonaws.com",
         "SourceArn": "arn:aws:s3:::log-minibuild"
       }
-    },
-    "S3BucketEvent": {
-      "Type": "AWS::S3::Bucket",
-      "Properties": {
-        "BucketName": "log-minibuild",
-        "NotificationConfiguration": {
-          "LambdaConfigurations": [
-            {
-              "Event": "s3:ObjectCreated:*",
-              "Function": {
-                "Fn::GetAtt": [
-                  "S3EventLoggerLambda",
-                  "Arn"
-                ]
-              }
-            },
-            {
-              "Event": "s3:ObjectRemoved:*",
-              "Function": {
-                "Fn::GetAtt": [
-                  "S3EventLoggerLambda",
-                  "Arn"
-                ]
-              }
-            }
-          ]
-        }
-      }
     }
   }
 }
