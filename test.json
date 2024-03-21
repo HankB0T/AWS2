@@ -1,20 +1,55 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Resources": {
-    "MyS3Bucket": {
-      "Type": "AWS::S3::Bucket",
+    "MyLambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
       "Properties": {
-        "BucketName": "log-bucket-minibuild"
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "root",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:*",
+                    "s3:GetObject"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ],
+        "RoleName": "log-checker"
       }
     },
     "MyLambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Handler": "log-lambda.lambda_handler",
-        "Role": "arn:aws:iam::[your-account-id]:role/[your-lambda-role]",
+        "Role": {
+          "Fn::GetAtt": [
+            "MyLambdaExecutionRole",
+            "Arn"
+          ]
+        },
         "Code": {
-          "S3Bucket": "[your-lambda-code-bucket]",
-          "S3Key": "log-lambda.zip"
+          "S3Bucket": "log-minibuild",
+          "S3Key": "log-lambda.py.zip"
         },
         "Runtime": "python3.8",
         "Timeout": 30
@@ -39,12 +74,10 @@
         }
       }
     },
-    "MyBucketNotification": {
-      "Type": "AWS::S3::BucketNotification",
+    "MyS3Bucket": {
+      "Type": "AWS::S3::Bucket",
       "Properties": {
-        "Bucket": {
-          "Ref": "MyS3Bucket"
-        },
+        "BucketName": "log-minibuild",
         "NotificationConfiguration": {
           "LambdaConfigurations": [
             {
@@ -67,8 +100,8 @@
             }
           ]
         }
-      }
+      },
+      "DependsOn": "MyLambdaInvokePermission"
     }
   }
 }
-
