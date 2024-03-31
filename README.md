@@ -1,4 +1,4 @@
-mplementation Guide
+Implementation Guide
 
 * Prepare the CloudFormation Template
     * Save the Template: Store the provided CloudFormation template code as a .yaml or .json file on your local computer (e.g., iac-1.yaml).
